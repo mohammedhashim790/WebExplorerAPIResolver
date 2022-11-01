@@ -49,9 +49,37 @@ string listLogicalDrives();
 void ListEntitiesDFS(string fromPath);
 string ListEntitiesBFS(string fromPath);
 void SampleRecursive(string fromPath);
+string EntitiesFromPath(string fromPath);
 
 string accumulate(vector<string> vector);
 bool isValidDirectory(fs::directory_entry entry);
+
+
+
+JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListDrive(JNIEnv* env, jobject thisObj) {
+
+    return env->NewStringUTF(listLogicalDrives().c_str());
+}
+
+
+
+JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
+    
+    string path(env->GetStringUTFChars(fromPath,0));
+
+
+
+    /// <summary>
+    /// BFS
+    /// </summary>
+    /// <param name="env"></param>
+    /// <param name="thisObj"></param>
+    /// <param name="fromPath"></param>
+    /// <returns></returns>
+    return env->NewStringUTF(EntitiesFromPath(path).c_str());
+
+}
+
 
 
 
@@ -247,7 +275,7 @@ int main()
     cout << ListEntitiesBFS(dDrive);
 
 
-    cout << endl << "Time Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
+    cout << "\n\n\n\n\nTime Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
 }
 
 
@@ -296,23 +324,24 @@ string ListEntitiesBFS(string fromPath) {
     int files = 0;
 
     fs::directory_entry rootEntry = fs::directory_entry(fromPath);
-    Folder rootFolder(rootEntry.path().generic_string(),rootEntry);
+    Folder *rootFolder =  new Folder(rootEntry.path().generic_string(),rootEntry);
+    que.push(rootFolder);
 
 
-    for (const auto& entry : fs::directory_iterator(fromPath, fs::directory_options::skip_permission_denied)) {
-        /*cout << entry.path() << " \t"  << isValidDirectory(entry) << endl;*/
-        if (isValidDirectory(entry)) {
-            Folder* folder = new Folder(entry.path().filename().generic_string(), entry);
-            rootFolder.addFolder(folder);
-            
-            que.push(folder);
-        }
-        else {
-            File *file = new File(entry.path().filename().generic_string(), entry);
-            rootFolder.addFile(file);
-        }
-        printf("%d\b",iter++);
-    }
+    //for (const auto& entry : fs::directory_iterator(fromPath, fs::directory_options::skip_permission_denied)) {
+    //    /*cout << entry.path() << " \t"  << isValidDirectory(entry) << endl;*/
+    //    if (isValidDirectory(entry)) {
+    //        Folder* folder = new Folder(entry.path().filename().generic_string(), entry);
+    //        rootFolder.addFolder(folder);
+    //        
+    //        que.push(folder);
+    //    }
+    //    else {
+    //        File *file = new File(entry.path().filename().generic_string(), entry);
+    //        rootFolder.addFile(file);
+    //    }
+    //    printf("%d\b",iter++);
+    //}
 
     vector<string> folderVector;
     vector<string> filesVector;
@@ -375,7 +404,7 @@ string ListEntitiesBFS(string fromPath) {
     cout << "Total Folders : " << iter << " " << folderVector.size() << endl;
     cout << "Total Files : " << files << " " << filesVector.size() << endl;
 
-    string res = rootFolder.toString();
+    string res = rootFolder->toString();
     cout << "Root Folder : " << res.length();
 
     cout << "\nEnd of " << fromPath << endl;
