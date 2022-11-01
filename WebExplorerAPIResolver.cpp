@@ -8,6 +8,9 @@
 #include <tchar.h>
 #include<queue>
 #include <filesystem>
+#include<string>
+#include<jni.h>
+#include "Resolver.h"
 
 
 using namespace std;
@@ -51,6 +54,11 @@ string accumulate(vector<string> vector);
 bool isValidDirectory(fs::directory_entry entry);
 
 
+
+
+
+
+
 class File {
 private:
     string name;
@@ -90,7 +98,7 @@ public:
     }
 
     string toString() {
-        return "{\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\"" + "}";
+        return "{\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\", \"Size\":" + to_string(entryPoint.file_size()) + "}";
     }
 
 
@@ -198,7 +206,7 @@ public:
 
 
     string toString() {
-        return "{\"Name \" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\"," + "\"subFolders\" : " + this->accumulateFolders() + ",\"files\" : " + this->accumulateFiles() + "}";
+        return "{\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\"," + "\"subFolders\" : " + this->accumulateFolders() + ",\"files\" : " + this->accumulateFiles() + "}";
     }
 
     void addFile(File* fileName) {
@@ -236,7 +244,7 @@ int main()
     const string dDrive("D:\\");
     const string cDrive("C:\\");
 
-    ListEntitiesBFS(cDrive);
+    cout << ListEntitiesBFS(dDrive);
 
 
     cout << endl << "Time Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
@@ -291,7 +299,7 @@ string ListEntitiesBFS(string fromPath) {
     Folder rootFolder(rootEntry.path().generic_string(),rootEntry);
 
 
-    for (const auto& entry : fs::directory_iterator(fromPath)) {
+    for (const auto& entry : fs::directory_iterator(fromPath, fs::directory_options::skip_permission_denied)) {
         /*cout << entry.path() << " \t"  << isValidDirectory(entry) << endl;*/
         if (isValidDirectory(entry)) {
             Folder* folder = new Folder(entry.path().filename().generic_string(), entry);
@@ -303,7 +311,7 @@ string ListEntitiesBFS(string fromPath) {
             File *file = new File(entry.path().filename().generic_string(), entry);
             rootFolder.addFile(file);
         }
-        //printf("%d\b",iter++);
+        printf("%d\b",iter++);
     }
 
     vector<string> folderVector;
