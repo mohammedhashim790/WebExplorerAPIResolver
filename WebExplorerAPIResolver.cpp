@@ -38,10 +38,83 @@ using namespace std;
 //}
 
 
+
+/// <summary>
+/// Set Seek for Generation 
+/// </summary>
+/// <param name=""></param>
+
+
+
+
 DWORD mydrives = 100;
 char lpBuffer[100];
 
 namespace fs = std::filesystem;
+
+
+
+
+string decToHexa(int n)
+{
+    // ans string to store hexadecimal number
+    string ans = "";
+
+    while (n != 0) {
+        int rem = 0;
+        char ch;
+        rem = n % 16;
+
+        if (rem < 10) {
+            ch = rem + 48;
+        }
+        else {
+            ch = rem + 55;
+        }
+
+        ans += ch;
+        n = n / 16;
+    }
+
+    int i = 0, j = ans.size() - 1;
+
+    return string(ans.rbegin(), ans.rend());
+}
+
+
+string RandomSeries() {
+    //Set Seed
+
+    /*srand(time(NULL));
+
+    int sec = rand();
+
+
+    srand(sec);*/
+
+
+    int limit = 255;
+    string series;
+    for (int i = 0; i < 16; i++) {
+        int num = 16 + (rand() % limit);
+        series += decToHexa(num);
+    }
+    /// <summary>
+    /// Filter to 32 bits
+    /// </summary>
+    /// <returns></returns>
+    if (series.length() > 32) {
+        series = series.substr(0, 32);
+    }
+    return series;
+}
+
+string UUIDV4() {
+
+    return RandomSeries();
+}
+
+
 
 
 string listLogicalDrives();
@@ -84,14 +157,13 @@ JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_List
 
 
 
-
-
-
 class File {
 private:
+    string Id;
     string name;
     fs::directory_entry entryPoint;
     size_t fileSize;
+    string parentId;
 
 
 
@@ -115,6 +187,13 @@ public:
         return fileSize;
     }
 
+    string getParentId() {
+        if (this->parentId.empty()) {
+            return "null";
+        }
+        return "\"" + this->parentId + "\"";
+    }
+
 
 
     void setEntryPoint(fs::directory_entry entryPoint) {
@@ -126,22 +205,25 @@ public:
     }
 
     string toString() {
-        return "{\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\", \"Size\":" + to_string(entryPoint.file_size()) + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\", \"Size\":" + to_string(entryPoint.file_size()) + ",\"parentId\" : " + this->getParentId() + "}";
     }
 
 
     File() {
-
+        this->Id = UUIDV4();
     }
     File(string name) {
+        this->Id = UUIDV4();
         this->setName(name);
     }
 
 
-    File(string name, fs::directory_entry entryPoint) {
+    File(string name, fs::directory_entry entryPoint,string parentId) {
+        this->Id = UUIDV4();
         this->setName(name);
         this->setEntryPoint(entryPoint);
         this->setFileSize(entryPoint.file_size());
+        this->parentId = parentId;
     }
 
 };
@@ -164,8 +246,10 @@ class Folder{
 /// </summary>
 
 private:
+    string Id;
     string name;
     fs::directory_entry entryPoint;
+    string parentId;
 
     
 
@@ -222,6 +306,16 @@ public:
     string getName() {
         return this->name;
     }
+    string getParentId() {
+        if (this->parentId.empty()) {
+            return "null";
+        }
+        return "\"" + this->parentId + "\"";
+    }
+    string getId() {
+        return this->Id;
+    }
+
 
     void setEntryPoint(fs::directory_entry entryPoint) {
         this->entryPoint = entryPoint;
@@ -234,7 +328,7 @@ public:
 
 
     string toString() {
-        return "{\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\"," + "\"subFolders\" : " + this->accumulateFolders() + ",\"files\" : " + this->accumulateFiles() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\"," + "\"subFolders\" : " + this->accumulateFolders() + ",\"files\" : " + this->accumulateFiles() + ",\"parentId\" : " + this->getParentId() + "}";
     }
 
     void addFile(File* fileName) {
@@ -246,17 +340,20 @@ public:
     }
 
     Folder() {
-
+        this->Id = UUIDV4();
     }
 
     Folder(string name) {
+        this->Id = UUIDV4();
         this->setName(name);
     }
 
 
-    Folder(string name,fs::directory_entry entryPoint) {
+    Folder(string name,fs::directory_entry entryPoint,string parentId) {
         this->setName(name);
+        this->Id = UUIDV4();
         this->setEntryPoint(entryPoint);
+        this->parentId = parentId;
     }
 
 };
@@ -272,7 +369,9 @@ int main()
     const string dDrive("D:\\");
     const string cDrive("C:\\");
 
-    cout << ListEntitiesBFS(dDrive);
+    const string shortPath("D:\\Zoho\\Notes");
+
+    cout << EntitiesFromPath(dDrive);
 
 
     cout << "\n\n\n\n\nTime Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
@@ -310,6 +409,7 @@ void SampleRecursive(string fromPath) {
 
 
 string EntitiesFromPath(string fromPath) {
+    srand(time(NULL));
     return ListEntitiesBFS(fromPath);
 }
 
@@ -324,7 +424,7 @@ string ListEntitiesBFS(string fromPath) {
     int files = 0;
 
     fs::directory_entry rootEntry = fs::directory_entry(fromPath);
-    Folder *rootFolder =  new Folder(rootEntry.path().generic_string(),rootEntry);
+    Folder *rootFolder =  new Folder(rootEntry.path().generic_string(),rootEntry,"");
     que.push(rootFolder);
 
 
@@ -377,7 +477,7 @@ string ListEntitiesBFS(string fromPath) {
                 //cout << "Details : " << entry.path() << " IsDire : " << isValidDirectory(entry) << endl;
 
                 if (isValidDirectory(entry)) {
-                    Folder *folder = new Folder(entry.path().filename().generic_string(), entry);
+                    Folder *folder = new Folder(entry.path().filename().generic_string(), entry,pRef->getId());
                     que.push(folder);
                     
                     parent->addFolder(folder);
@@ -385,7 +485,7 @@ string ListEntitiesBFS(string fromPath) {
                 }
                 else {
                     files++;
-                    File *file = new File(entry.path().filename().generic_string(), entry);
+                    File *file = new File(entry.path().filename().generic_string(), entry, pRef->getId());
                     parent->addFile(file);
                     filesVector.push_back(entry.path().generic_string());
                 }
