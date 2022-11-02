@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <tchar.h>
 #include<queue>
+#include<stack>
 #include <filesystem>
 #include<string>
 #include<jni.h>
@@ -120,41 +121,11 @@ string UUIDV4() {
 string listLogicalDrives();
 
 void ListEntitiesDFS(string fromPath);
-string ListEntitiesBFS(string fromPath);
 void SampleRecursive(string fromPath);
-string EntitiesFromPath(string fromPath);
+
 
 string accumulate(vector<string> vector);
 bool isValidDirectory(fs::directory_entry entry);
-
-
-
-JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListDrive(JNIEnv* env, jobject thisObj) {
-
-    return env->NewStringUTF(listLogicalDrives().c_str());
-}
-
-
-
-JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
-    
-    string path(env->GetStringUTFChars(fromPath,0));
-
-
-
-    /// <summary>
-    /// BFS
-    /// </summary>
-    /// <param name="env"></param>
-    /// <param name="thisObj"></param>
-    /// <param name="fromPath"></param>
-    /// <returns></returns>
-    return env->NewStringUTF(EntitiesFromPath(path).c_str());
-
-}
-
-
-
 
 
 class File {
@@ -360,6 +331,61 @@ public:
 
 
 
+stack<Folder*> stackFolder;
+
+Folder* EntitiesFromPath(string fromPath);
+Folder* ListEntitiesBFS(string fromPath);
+
+
+
+
+JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListDrive(JNIEnv* env, jobject thisObj) {
+
+    return env->NewStringUTF(listLogicalDrives().c_str());
+}
+
+
+
+JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
+
+    string path(env->GetStringUTFChars(fromPath, 0));
+
+
+
+    /// <summary>
+    /// BFS
+    /// </summary>
+    /// <param name="env"></param>
+    /// <param name="thisObj"></param>
+    /// <param name="fromPath"></param>
+    /// <returns></returns>
+    /// EntitiesFromPath(path).c_str()
+
+    Folder* folder = EntitiesFromPath(path);
+
+    return stackFolder.size();
+
+}
+
+JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_NextFolder(JNIEnv* env, jobject thisObj) {
+
+    if (stackFolder.empty()) {
+        return env->NewStringUTF("Empty");
+    }
+    
+    Folder* topFolder = stackFolder.top();
+    stackFolder.pop();
+    cout << "Remaining Size : " << stackFolder.size() << endl;
+
+    return env->NewStringUTF(topFolder->toString().c_str());
+
+}
+
+
+
+
+
+
 int main()
 {
     int now = time(NULL);
@@ -371,7 +397,12 @@ int main()
 
     const string shortPath("D:\\Zoho\\Notes");
 
-    cout << EntitiesFromPath(dDrive);
+    Folder* drive = EntitiesFromPath(cDrive);
+
+    cout << "Done Reading " << endl;
+
+
+    //cout << "\n\n\n Stack TOp Folder" << stackFolder.size();
 
 
     cout << "\n\n\n\n\nTime Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
@@ -408,64 +439,45 @@ void SampleRecursive(string fromPath) {
 
 
 
-string EntitiesFromPath(string fromPath) {
+Folder* EntitiesFromPath(string fromPath) {
     srand(time(NULL));
     return ListEntitiesBFS(fromPath);
 }
 
 
 
-string ListEntitiesBFS(string fromPath) {
+Folder* ListEntitiesBFS(string fromPath) {
 
     cout << "From Path " << fromPath << endl << endl;
 
     queue<Folder*> que;
     int iter = 0;
     int files = 0;
+    int folders = 0;
+    
+
+    //Empty Stack
+    while (!stackFolder.empty()) {
+        stackFolder.pop();
+    }
 
     fs::directory_entry rootEntry = fs::directory_entry(fromPath);
     Folder *rootFolder =  new Folder(rootEntry.path().generic_string(),rootEntry,"");
     que.push(rootFolder);
-
-
-    //for (const auto& entry : fs::directory_iterator(fromPath, fs::directory_options::skip_permission_denied)) {
-    //    /*cout << entry.path() << " \t"  << isValidDirectory(entry) << endl;*/
-    //    if (isValidDirectory(entry)) {
-    //        Folder* folder = new Folder(entry.path().filename().generic_string(), entry);
-    //        rootFolder.addFolder(folder);
-    //        
-    //        que.push(folder);
-    //    }
-    //    else {
-    //        File *file = new File(entry.path().filename().generic_string(), entry);
-    //        rootFolder.addFile(file);
-    //    }
-    //    printf("%d\b",iter++);
-    //}
+    stackFolder.push(rootFolder);
 
     vector<string> folderVector;
     vector<string> filesVector;
 
 
-
-    //cout << "Reading Children " << endl;
-
-
-    //while (!que.empty()) {
-    //    cout << "Detail : " << que.front()->toString() << endl;
-    //    que.pop();
-    //}
-
-
-    //cout << "RootFolder: \n\n" << rootFolder.toString();
+    
+    
 
     while (!que.empty()) {
         try {
             Folder *parent = que.front();
 
-            Folder *pRef = parent;
-
-            //cout << "Reading From : " << parent->toString() << endl;
+            Folder* pRef = parent;
 
             que.pop();
             
@@ -479,15 +491,17 @@ string ListEntitiesBFS(string fromPath) {
                 if (isValidDirectory(entry)) {
                     Folder *folder = new Folder(entry.path().filename().generic_string(), entry,pRef->getId());
                     que.push(folder);
+                    stackFolder.push(folder);
                     
                     parent->addFolder(folder);
                     folderVector.push_back(entry.path().generic_string());
+                    folders++;
                 }
                 else {
-                    files++;
                     File *file = new File(entry.path().filename().generic_string(), entry, pRef->getId());
                     parent->addFile(file);
                     filesVector.push_back(entry.path().generic_string());
+                    files++;
                 }
                 printf("%d\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", iter++);
             }
@@ -501,15 +515,14 @@ string ListEntitiesBFS(string fromPath) {
 
     cout << "\n\n\n";
 
-    cout << "Total Folders : " << iter << " " << folderVector.size() << endl;
+    cout << "Total Folders : " << folders << " " << folderVector.size() << endl;
     cout << "Total Files : " << files << " " << filesVector.size() << endl;
 
-    string res = rootFolder->toString();
-    cout << "Root Folder : " << res.length();
 
-    cout << "\nEnd of " << fromPath << endl;
+   
+    //cout << "\nEnd of " << fromPath << endl;
 
-    return res;
+    return rootFolder;
 }
 
 string accumulate(vector<string> vect) {
