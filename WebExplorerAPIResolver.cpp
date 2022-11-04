@@ -171,7 +171,7 @@ public:
     }
 
     string toSimpleString() {
-        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name + "\"" + ",\"parentFolderId\" : " + this->getParentId() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name + "\"" + ",\"parentFolderId\" : " + this->getParentId() + ",\"Size\":" + to_string(entryPoint.file_size()) + "}";
     }
 
 
@@ -298,7 +298,7 @@ public:
     }
 
     string toSimpleString() {
-        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() +  "\",\"files\" : " + this->accumulateFiles() + ",\"parentId\" : " + this->getParentId() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() +  "\"," + "\"parentId\" : " + this->getParentId() + "}";
     }
 
 
@@ -332,6 +332,7 @@ public:
 
 
 queue<Folder*> folders;
+queue<File*> files;
 string listLogicalDrives();
 
 void ListEntitiesDFS(string fromPath);
@@ -352,7 +353,7 @@ JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_List
 }
 
 
-int ONE_TIME_LIMIT = 7000;
+int ONE_TIME_LIMIT = 10000;
 
 JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
 
@@ -381,9 +382,8 @@ JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFo
 Folder* rootFolder;
 
 
-JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_Next(JNIEnv* env, jobject thisObj, jstring parentId) {
-
-    string json("{\"Folders\" : [");
+string makeFolder() {
+    string json("\"Folders\" : [");
 
     int iter = 0;
 
@@ -398,8 +398,40 @@ JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_N
     }
     if (iter > 1)
         json = string(json.begin(), json.end() - 1);
-    json += "]}";
+    json += "],";
+    return json;
+}
 
+string makeFile() {
+    string json("\"Files\" : [");
+
+    int iter = 0;
+
+    while (iter < ONE_TIME_LIMIT && !files.empty()) {
+        auto var = files.front();
+        files.pop();
+        string res = var->toSimpleString();
+
+        res += ",";
+        json += res;
+        iter++;
+    }
+    if (iter > 1)
+        json = string(json.begin(), json.end() - 1);
+    json += "]";
+    return json;
+}
+
+
+JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_Next(JNIEnv* env, jobject thisObj, jstring parentId) {
+
+    
+    string json("{");
+
+    json += makeFolder();
+
+    json += makeFile();
+    json += "}";
 
     const char* res = json.c_str();
 
@@ -425,20 +457,14 @@ int main()
 
     EntitiesFromPath(dDrive);
 
-    string json("{\"Folders\" : [");
+    string json("{");
 
+    json += makeFolder();
 
+    json += makeFile();
+    json += "}";
 
-    /*for (const auto var : folders) {
-        string res = var->toSimpleString();
-
-        res += ",";
-        json += res;
-    }
-    json = string(json.begin(), json.end() - 1);
-    json += "]}";*/
-
-    cout << folders.size() << " String length : "<< json.length();
+    cout << json;
 
 
     cout << " Char Length : " << strlen(json.c_str());
@@ -490,7 +516,7 @@ string ListEntitiesBFS(string fromPath) {
 
     queue<Folder*> que;
     int iter = 0;
-    int files = 0;
+    int filesIter = 0;
     int folderIter = 0;
 
     fs::directory_entry rootEntry = fs::directory_entry(fromPath);
@@ -498,8 +524,8 @@ string ListEntitiesBFS(string fromPath) {
     que.push(rootFolder);
     folders.push(rootFolder);
 
-    vector<string> folderVector;
-    vector<string> filesVector;
+    //vector<string> folderVector;
+    //vector<string> filesVector;
 
 
     while (!que.empty()) {
@@ -520,15 +546,14 @@ string ListEntitiesBFS(string fromPath) {
                     Folder *folder = new Folder(entry.path().filename().generic_string(), entry,pRef->getId());
                     que.push(folder);
                     parent->addFolder(folder);
-                    folderVector.push_back(entry.path().generic_string());
                     folders.push(folder);
                     folderIter++;
                 }
                 else {
                     File *file = new File(entry.path().filename().generic_string(), entry, pRef->getId());
                     parent->addFile(file);
-                    filesVector.push_back(entry.path().generic_string());
-                    files++;
+                    files.push(file);
+                    filesIter++;
                 }
                 printf("%d\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", iter++);
             }
@@ -542,8 +567,8 @@ string ListEntitiesBFS(string fromPath) {
 
     cout << "\n\n\n";
 
-    cout << "Total Folders : " << folderIter << " " << folderVector.size() << endl;
-    cout << "Total Files : " << files << " " << filesVector.size() << endl;
+    cout << "Total Folders : " << folderIter << " " << folders.size() << endl;
+    cout << "Total Files : " << filesIter << " " << files.size() << endl;
 
 
     cout << "\nEnd of " << fromPath << endl;
