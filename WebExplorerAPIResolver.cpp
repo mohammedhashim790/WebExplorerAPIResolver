@@ -512,7 +512,7 @@ string ListEntitiesBFS(string fromPath) {
             que.pop();
             
             fs::path path = pRef->getEntryPoint().path();
-
+         
 
             for (const auto& entry : fs::directory_iterator(path, fs::directory_options::skip_permission_denied)) {
                 if (isValidDirectory(entry)) {
