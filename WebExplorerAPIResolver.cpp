@@ -167,11 +167,11 @@ public:
     }
 
     string toString() {
-        return "{\"Id\":\"" + this->Id + "\",\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\", \"Size\":" + to_string(entryPoint.file_size()) + ",\"parentId\" : " + this->getParentId() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : " + this->getName()+",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\", \"Size\":" + to_string(entryPoint.file_size()) + ",\"parentFolderId\" : " + this->getParentId() + "}";
     }
 
     string toSimpleString() {
-        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name + "\"" + ",\"parentId\" : " + this->getParentId() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name + "\"" + ",\"parentFolderId\" : " + this->getParentId() + "}";
     }
 
 
@@ -298,7 +298,7 @@ public:
     }
 
     string toSimpleString() {
-        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() + "\",\"parentId\" : " + this->getParentId() + "}";
+        return "{\"Id\":\"" + this->Id + "\",\"Name\" : \"" + this->name  + "\",\"Path\" : \"" + getEntryPoint().path().generic_string() +  "\",\"files\" : " + this->accumulateFiles() + ",\"parentId\" : " + this->getParentId() + "}";
     }
 
 
@@ -352,7 +352,7 @@ JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_List
 }
 
 
-int ONE_TIME_LIMIT = 500;
+int ONE_TIME_LIMIT = 1000;
 
 JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
 
@@ -382,9 +382,7 @@ Folder* rootFolder;
 
 JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_Next(JNIEnv* env, jobject thisObj, jstring parentId) {
 
-    string json = rootFolder->toString();
-
-    /*string json("{\"Folders\" : [");
+    string json("{\"Folders\" : [");
 
     int iter = 0;
 
@@ -399,7 +397,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_N
     }
     if (iter > 1)
         json = string(json.begin(), json.end() - 1);
-    json += "]}";*/
+    json += "]}";
 
 
     const char* res = json.c_str();
