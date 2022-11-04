@@ -352,7 +352,7 @@ JNIEXPORT jstring JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_List
 }
 
 
-int ONE_TIME_LIMIT = 1000;
+int ONE_TIME_LIMIT = 7000;
 
 JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFolder(JNIEnv* env, jobject thisObj, jstring fromPath) {
 
