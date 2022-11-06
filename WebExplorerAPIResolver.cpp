@@ -336,13 +336,14 @@ queue<File*> files;
 string listLogicalDrives();
 
 void ListEntitiesDFS(string fromPath);
-string ListEntitiesBFS(string fromPath);
+string ListEntitiesBFS(string fromPath, JNIEnv* env);
 void SampleRecursive(string fromPath);
-string EntitiesFromPath(string fromPath);
+string EntitiesFromPath(string fromPath, JNIEnv* env);
 
 string accumulate(vector<string> vector);
 bool isValidDirectory(fs::directory_entry entry);
 
+void CallJava();
 
 
 
@@ -372,7 +373,7 @@ JNIEXPORT jlong JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_ListFo
     /// 
 
 
-    EntitiesFromPath(path).c_str();
+    EntitiesFromPath(path,env).c_str();
 
     return folders.size();
 
@@ -443,6 +444,45 @@ JNIEXPORT jbyteArray JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_N
 }
 
 
+jclass loadClass(JNIEnv* env) {
+    jclass clas = env->FindClass("com/example/webexplorerapi/Controller/Queries");
+
+    return clas;
+}
+
+void CheckClass(JNIEnv* env) {
+    jclass cls = env->FindClass("com/example/webexplorerapi/Controller/Queries");
+
+    cout << " EMpty Folder : " << (cls == nullptr);
+
+
+    if (cls == nullptr) {
+        cerr << "ERROR: class not found !";
+    }
+    else {                                  
+
+        jmethodID mid = env->GetStaticMethodID(cls, "mymain", "()V");  // find method
+        if (mid == nullptr)
+            cerr << "ERROR: method void mymain() not found !" << endl;
+        else {
+            env->CallStaticVoidMethod(cls, mid);                      // call method
+            cout << endl;
+        }
+    }
+
+}
+
+
+JNIEXPORT void JNICALL Java_com_example_webexplorerapi_Resolver_Resolver_TestEnv(JNIEnv* env, jobject thisObj) {
+
+    CheckClass(env);
+
+}
+
+
+
+
+
 
 int main()
 {
@@ -453,21 +493,25 @@ int main()
     const string dDrive("D:\\");
     const string cDrive("C:\\");
 
-    const string shortPath("D:\\Zoho\\Notes");
 
-    EntitiesFromPath(dDrive);
+    CallJava();
 
-    string json("{");
+
+    //const string shortPath("D:\\Zoho\\Notes");
+
+    //EntitiesFromPath(cDrive);
+
+    /*string json("{");
 
     json += makeFolder();
 
     json += makeFile();
     json += "}";
 
-    cout << json;
+    cout << json;*/
 
 
-    cout << " Char Length : " << strlen(json.c_str());
+    //cout << " Char Length : " << strlen(json.c_str());
 
     cout << "\n\n\n\n\nTime Taken to Execute DFS : " << (time(NULL) - now)<<"\n\n\n";
 }
@@ -475,8 +519,7 @@ int main()
 
 void ListEntitiesDFS(string fromPath) {
 
-    
-
+   
     for (const auto& entry : fs::directory_iterator(fromPath)){
         cout << entry.path() << endl;
         if (entry.is_directory()) {
@@ -503,16 +546,39 @@ void SampleRecursive(string fromPath) {
 
 
 
-string EntitiesFromPath(string fromPath) {
+string EntitiesFromPath(string fromPath, JNIEnv* env) {
     srand(time(NULL));
-    return ListEntitiesBFS(fromPath);
+    return ListEntitiesBFS(fromPath,env);
 }
 
 
 
-string ListEntitiesBFS(string fromPath) {
+void SendToJava(JNIEnv* env,jclass jcls) {
+
+    cout << "Sending to Java : " << endl;
+
+    string json("{");
+
+    json += makeFolder();
+
+    json += makeFile();
+    json += "}";
+
+    jmethodID mid = env->GetStaticMethodID(jcls, "GetEntityFromResolver", "(Ljava/lang/String;)V");  // find method
+    if (mid == nullptr)
+        cerr << "ERROR: method void mymain() not found !" << endl;
+    else {
+        env->CallStaticVoidMethod(jcls, mid, env->NewStringUTF(json.c_str()));                      // call method
+        cout << endl;
+    }
+}
+
+string ListEntitiesBFS(string fromPath, JNIEnv* env) {
 
     cout << "From Path " << fromPath << endl << endl;
+
+
+    jclass jcls = loadClass(env);
 
     queue<Folder*> que;
     int iter = 0;
@@ -557,10 +623,15 @@ string ListEntitiesBFS(string fromPath) {
                 }
                 printf("%d\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", iter++);
             }
+
+            if (folders.size() > ONE_TIME_LIMIT) {
+                SendToJava(env,jcls);
+            }
+
         }
         catch (exception e) {
             //cout << "\n\n\nError  : " << e.what() << "\n\n\n";
-            /*cout << e.what();*/
+            cout << e.what();
         }
     }
 
@@ -570,8 +641,14 @@ string ListEntitiesBFS(string fromPath) {
     cout << "Total Folders : " << folderIter << " " << folders.size() << endl;
     cout << "Total Files : " << filesIter << " " << files.size() << endl;
 
+    while (!folders.empty() || !files.empty()) {
+        SendToJava(env, jcls);
+    }
+
+
 
     cout << "\nEnd of " << fromPath << endl;
+
 
     return rootFolder->toSimpleString();
 }
@@ -627,5 +704,42 @@ string listLogicalDrives() {
     drives = string(drives.begin(), drives.end() - 1);
     drives += ']';
     return drives;
+
+}
+
+void CallJava() {
+
+
+    //string /*classpath = "D:\\Zoho\\WebExplorer\\WebExplorerAPI\\src\\main\\java\\com\\example\\webexplorerapi\\Resolver";*/
+
+    char classpath[] = "-Djava.class.path=D:/Zoho/WebExplorer/WebExplorerAPI/src/main/java/com/example/webexplorerapi/Resolver";
+
+    JavaVM* jvm;
+    JNIEnv* env;
+
+    JavaVMInitArgs vm_args;
+    JavaVMOption* options = new JavaVMOption[1];
+    options[0].optionString = classpath;
+    vm_args.version = JNI_VERSION_1_6;
+    vm_args.nOptions = 1;
+    vm_args.options = options;
+    vm_args.ignoreUnrecognized = false;
+    jint rc = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);
+    delete options;
+    if (rc != JNI_OK) {
+        cin.get();
+        exit(EXIT_FAILURE);
+    }
+
+
+    cout << "JVM load succeeded: Version" << endl;
+    jint ver = env->GetVersion();
+
+    jclass cls = env->FindClass("Resolver");
+
+    cout << "Found Class " << (cls != nullptr);
+
+
+
 
 }
