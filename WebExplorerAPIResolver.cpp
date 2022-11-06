@@ -564,11 +564,15 @@ void SendToJava(JNIEnv* env,jclass jcls) {
     json += makeFile();
     json += "}";
 
-    jmethodID mid = env->GetStaticMethodID(jcls, "GetEntityFromResolver", "(Ljava/lang/String;)V");  // find method
+    //jmethodID mid = env->GetStaticMethodID(jcls, "GetEntityFromResolver", "(Ljava/lang/String;)V");  // find method
+    jmethodID mid = env->GetStaticMethodID(jcls, "GetEntityFromResolver", "([B)V");  // find method
     if (mid == nullptr)
         cerr << "ERROR: method void mymain() not found !" << endl;
     else {
-        env->CallStaticVoidMethod(jcls, mid, env->NewStringUTF(json.c_str()));                      // call method
+        jbyteArray byteArray = env->NewByteArray(json.size());
+        env->SetByteArrayRegion(byteArray, 0, json.size(), (jbyte*)json.data());
+        //env->CallStaticVoidMethod(jcls, mid, env->NewStringUTF(json.c_str()));                      // call method
+        env->CallStaticVoidMethod(jcls, mid, byteArray);                      // call method
         cout << endl;
     }
 }
