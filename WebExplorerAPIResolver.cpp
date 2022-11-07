@@ -388,7 +388,7 @@ string makeFolder() {
 
     int iter = 0;
 
-    while (iter < ONE_TIME_LIMIT && !folders.empty()) {
+    while (!folders.empty()) {
         auto var = folders.front();
         folders.pop();
         string res = var->toSimpleString();
@@ -408,7 +408,7 @@ string makeFile() {
 
     int iter = 0;
 
-    while (iter < ONE_TIME_LIMIT && !files.empty()) {
+    while (!files.empty()) {
         auto var = files.front();
         files.pop();
         string res = var->toSimpleString();
@@ -628,7 +628,7 @@ string ListEntitiesBFS(string fromPath, JNIEnv* env) {
                 printf("%d\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", iter++);
             }
 
-            if (folders.size() > ONE_TIME_LIMIT) {
+            if (folders.size() > ONE_TIME_LIMIT || files.size() > ONE_TIME_LIMIT) {
                 SendToJava(env,jcls);
             }
 
@@ -645,13 +645,24 @@ string ListEntitiesBFS(string fromPath, JNIEnv* env) {
     cout << "Total Folders : " << folderIter << " " << folders.size() << endl;
     cout << "Total Files : " << filesIter << " " << files.size() << endl;
 
-    while (!folders.empty() || !files.empty()) {
+
+    SendToJava(env,jcls);
+
+
+    /*while (!folders.empty() || !files.empty()) {
         SendToJava(env, jcls);
-    }
+    }*/
 
 
 
     cout << "\nEnd of " << fromPath << endl;
+
+    cout << "Stack is Empty  : Folders : " << folders.size() << " Files : " << files.size() << endl;
+
+
+
+
+
 
 
     return rootFolder->toSimpleString();
